@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/content_smart_payout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    app:layout_behavior="@string/appbar_scrolling_view_behavior"
+    tools:context=".DeviceConfiguration"
+    android:weightSum="2"
+    android:orientation="vertical">
+
+
+    <TextView
+        android:id="@+id/txtDevice"
+        android:layout_width="match_parent"
+        android:padding="10dp"
+        android:layout_height="0dp"
+        android:layout_weight="0.5"
+        android:text="TextView" />
+
+    <ListView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1.5"
+        android:id="@+id/listDevice"
+         />
+
+    <Button
+        android:id="@+id/bttnApplyRoutes"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/colorAccent"
+        android:text="Apply route changes"
+        android:visibility="invisible"
+        android:textAllCaps="false"
+        android:textColor="@color/colorList" />
+
+</LinearLayout>
