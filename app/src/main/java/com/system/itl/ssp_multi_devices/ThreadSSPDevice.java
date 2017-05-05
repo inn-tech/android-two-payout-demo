@@ -30,10 +30,8 @@ import ioio.lib.api.IOIO;
 import ioio.lib.api.Uart;
 import ioio.lib.api.exception.ConnectionLostException;
 
-public class ThreadBankPayout extends Thread implements  DeviceSetupListener, DeviceEventListener, DeviceFileUpdateListener,DevicePayoutEventListener {
+class ThreadSSPDevice extends Thread implements  DeviceSetupListener, DeviceEventListener, DeviceFileUpdateListener,DevicePayoutEventListener {
 
-
-    private DigitalOutput digitalOutputBankSP0;
     private Uart uartBankSP0;
     private InputStream inputStreamBankSP0;
     private OutputStream outputStreamBankSP0;
@@ -42,17 +40,18 @@ public class ThreadBankPayout extends Thread implements  DeviceSetupListener, De
 
     private final int READBUF_SIZE = 256;
     private int WRITEBUF_SIZE = 4096;
-    byte[] rbuf = new byte[READBUF_SIZE];
-    byte[] wbuf = new byte[WRITEBUF_SIZE];
+    private byte[] rbuf = new byte[READBUF_SIZE];
+    private byte[] wbuf = new byte[WRITEBUF_SIZE];
 
     private SSPSystem ssp = null;
     private boolean setupRun = false;
     private int uartTx;
     private int uartRx;
+    private boolean isRunning;
+    private DeviceManager managerInstance;
 
 
-    public ThreadBankPayout(String tag){
-
+    ThreadSSPDevice(String tag){
 
         // ssp object
         ssp = new SSPSystem();
@@ -69,16 +68,17 @@ public class ThreadBankPayout extends Thread implements  DeviceSetupListener, De
     }
 
 
-    public void setup(IOIO ioio_ , int power, int uarttx, int uartrx) {
+    void setup(DeviceManager ins , IOIO ioio_, int power, int uarttx, int uartrx) {
         try {
 
             ioio = ioio_;
+            managerInstance = ins;
 
             // copy to class variables
             uartRx = uartrx;
             uartTx = uarttx;
             // enable the power to BV20
-            digitalOutputBankSP0 = ioio_.openDigitalOutput(power, true);
+            ioio_.openDigitalOutput(power, true);
             // set up comms
             uartBankSP0 = ioio_.openUart(uarttx, uartrx, 9600, Uart.Parity.NONE, Uart.StopBits.TWO);
             // serial IO streams
@@ -95,7 +95,7 @@ public class ThreadBankPayout extends Thread implements  DeviceSetupListener, De
     }
 
 
-    public void RunSSPSystem()
+    void RunSSPSystem()
     {
         if(ssp != null) {
            ssp.Run();
@@ -104,12 +104,17 @@ public class ThreadBankPayout extends Thread implements  DeviceSetupListener, De
     }
 
 
-    public  ArrayList<ItlCurrencyValue> GetTotalStoredValue()
+    void Close(){
+        isRunning = false;
+    }
+
+
+    ArrayList<ItlCurrencyValue> GetTotalStoredValue()
     {
         return ssp.GetCurrentStoredTotal();
     }
 
-    public ArrayList<ItlCurrency> GetDeviceCurrencyList()
+    ArrayList<ItlCurrency> GetDeviceCurrencyList()
     {
 
         return ssp.GetDeviceCurrencyList();
@@ -124,35 +129,34 @@ public class ThreadBankPayout extends Thread implements  DeviceSetupListener, De
     }
 
 
-    public String GetDeviceType()
+    String GetDeviceType()
     {
 
         return  ssp.GetDeviceType();
     }
 
 
-    public  void SetRoutes()
+    void SetRoutes()
     {
         ssp.RunRouteQueue();
     }
 
 
-    public  ArrayList<ItlCurrencyValue> GetMinimumPayout()
+    ArrayList<ItlCurrencyValue> GetMinimumPayout()
     {
         return ssp.GetMinimumPayout();
     }
 
 
 
-    public  SSPDevice GetDevice()
+    SSPDevice GetDevice()
     {
         return ssp.GetDevice();
     }
 
 
 
-
-    public void StopSSPSystem()
+    void StopSSPSystem()
     {
         if(ssp != null) {
             ssp.Close();
@@ -161,7 +165,7 @@ public class ThreadBankPayout extends Thread implements  DeviceSetupListener, De
     }
 
 
-    public void SSPEnable()
+    void SSPEnable()
     {
         if(ssp != null) {
             ssp.EnableDevice();
@@ -169,7 +173,7 @@ public class ThreadBankPayout extends Thread implements  DeviceSetupListener, De
     }
 
 
-    public void SSPDisable()
+    void SSPDisable()
     {
         if(ssp != null) {
             ssp.DisableDevice();
@@ -190,7 +194,7 @@ public class ThreadBankPayout extends Thread implements  DeviceSetupListener, De
     }
 
 
-    public String GetSystemName()
+    String GetSystemName()
     {
         return ssp.GetSystemName();
     }
@@ -249,16 +253,10 @@ public class ThreadBankPayout extends Thread implements  DeviceSetupListener, De
      * @param sspDevice the SSPdevice information class
      */
     @Override
-    public void OnNewDeviceSetup(final SSPDevice sspDevice) {
-
-
-        MainActivity.mainActivity.runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                MainActivity.mainActivity.DisplayNewSetup(sspDevice, ssp.GetSystemName());
-            }
-        });
-
+    public void OnNewDeviceSetup(SSPDevice sspDevice) {
+        synchronized (ThreadSSPDevice.this) {
+            managerInstance.NewSetupEvent(sspDevice, ssp.GetSystemName());
+        }
     }
 
 
@@ -270,13 +268,9 @@ public class ThreadBankPayout extends Thread implements  DeviceSetupListener, De
     public void OnDeviceDisconnect(final SSPDevice sspDevice) {
 
 
-        MainActivity.mainActivity.runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                MainActivity.mainActivity.DisplayDisconnected(sspDevice, ssp.GetSystemName());
-            }
-        });
-
+        synchronized (ThreadSSPDevice.this) {
+            managerInstance.NewComDisconnectEvent(sspDevice, ssp.GetSystemName());
+        }
     }
 
 
@@ -348,13 +342,10 @@ public class ThreadBankPayout extends Thread implements  DeviceSetupListener, De
     @Override
     public void OnNewPayoutEvent(final SSPPayoutEvent ev) {
 
-        /*
-        MainActivity.mainActivity.runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                MainActivity.mainActivity.DisplayPayoutEvents(ev,ssp.GetSystemName());
-            }
-        }); */
+
+        synchronized (ThreadSSPDevice.this) {
+            managerInstance.NewBillPayoutEvent(ev, ssp.GetSystemName());
+        }
 
     }
 
@@ -413,7 +404,7 @@ public class ThreadBankPayout extends Thread implements  DeviceSetupListener, De
 
         int readSize = 0;
 
-        boolean isRunning = true;
+        isRunning = true;
 
 
         try {

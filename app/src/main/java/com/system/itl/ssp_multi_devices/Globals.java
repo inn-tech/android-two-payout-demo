@@ -1,15 +1,11 @@
 package com.system.itl.ssp_multi_devices;
 
 import android.app.Application;
-import android.content.Context;
-import android.content.Intent;
-
-import device.itl.sspcoms.SSPSystem;
 
 
 public class Globals extends Application {
 
-    private ThreadBankPayout mPayoutSystem;
+    private ThreadSSPDevice mPayoutSystem;
     private MyIOIOLooperManager myIOIOLooperManager;
 
 
@@ -24,39 +20,15 @@ public class Globals extends Application {
     }
 
 
-    public void SetCurrentSystem(ThreadBankPayout system)
+    public void SetCurrentSystem(ThreadSSPDevice system)
     {
         mPayoutSystem = system;
     }
 
-    public ThreadBankPayout GetCurrentSystem()
+    public ThreadSSPDevice GetCurrentSystem()
     {
         return mPayoutSystem;
     }
 
-    /*
-    private SSPSystem data;
-
-    private String threadBankName;
-
-
-    public SSPSystem getDeviceData(){
-        return this.data;
-    }
-
-    public void setDeviceData(SSPSystem d){
-        this.data=d;
-    }
-
-
-    public String getThreadBankName(){
-
-        return threadBankName;
-    }
-
-    public void setThreadBankName(String name){
-        threadBankName = name;
-    }
-    */
 
 }

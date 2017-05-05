@@ -1,46 +1,54 @@
 package com.system.itl.ssp_multi_devices;
 
 import android.util.Log;
-
 import ioio.lib.api.DigitalOutput;
 import ioio.lib.api.IOIO;
 import ioio.lib.api.exception.ConnectionLostException;
-import ioio.lib.util.android.IOIOActivity;
 
-/**
- * Created by Programmer on 16/3/2560.
- */
 
-public class ThreadFlashes extends Thread {
+
+class ThreadFlashes extends Thread {
 
     /**********************************************************************************************
      * Variable(s)
      **********************************************************************************************/
-    public static DigitalOutput digitalOutputSmallFlash;
+    private static DigitalOutput digitalOutputSmallFlash;
     private boolean running;
+    private String deviceName;
+    private int flashIntervalMs;
 
     /**********************************************************************************************
      * Constructor(s)
      **********************************************************************************************/
-    public ThreadFlashes() {
+     ThreadFlashes(String tag) {
 
+        deviceName = tag;
         running = false;
+        flashIntervalMs = 1000;
 
     }
 
     /**********************************************************************************************
      * Method/function(s)
      **********************************************************************************************/
-    public void setup(IOIO ioio_) {
+    void setup(IOIO ioio_, int intervalms) {
+
+        flashIntervalMs = intervalms;
+
         try {
+
             digitalOutputSmallFlash = ioio_.openDigitalOutput(0); //Deliver the electrical current to the leg.
 
         } catch (ConnectionLostException e) {
             e.printStackTrace();
-            Log.e("ThreadFlashesServiced", "" + e);
         }
     }
 
+
+    String GetDeviceName()
+    {
+        return deviceName;
+    }
 
     public void Close()
     {
@@ -51,20 +59,15 @@ public class ThreadFlashes extends Thread {
 
     @Override
     public void run() {
-        // super.run();
-        //Intent intent = new Intent("BoolEx");
+
 
         running = true;
         try {
             while (running) {
-                Log.e("ThreadFlashesServiced", "status: " + this.getState());
                 digitalOutputSmallFlash.write(true);
-
-                Thread.sleep(1000);
-
+                Thread.sleep(flashIntervalMs);
                 digitalOutputSmallFlash.write(false);
-
-                Thread.sleep(1000);
+                Thread.sleep(flashIntervalMs);
 
             }
         } catch (InterruptedException e) {
@@ -76,7 +79,6 @@ public class ThreadFlashes extends Thread {
             Log.e("ThreadFlashesServiced", "" + e);
         }
 
-        Log.e("ThreadFlashesServiced", "ThreadFlashesServiced status: " + this.getState());
     }
 
 }

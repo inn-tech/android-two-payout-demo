@@ -1,41 +1,43 @@
 package com.system.itl.ssp_multi_devices;
 
 import android.Manifest;
-import android.app.Activity;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.text.InputType;
+import android.view.Gravity;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.util.ArrayList;
 
-import device.itl.sspcoms.DeviceSetupListener;
 import device.itl.sspcoms.ItlCurrency;
 import device.itl.sspcoms.ItlCurrencyValue;
 import device.itl.sspcoms.SSPDevice;
 import device.itl.sspcoms.SSPPayoutEvent;
-import device.itl.sspcoms.SSPSystem;
-import ioio.lib.api.IOIO;
-import ioio.lib.util.IOIOLooper;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
 
     static MainActivity mainActivity;
-    TextView txtSP0;
-    TextView txtSP1;
+    TextView txtHeader1;
+    TextView txtSP0Status;
+    TextView txtSP1Status;
 
-
+    private String m_DeviceCountry;
+    private String[] pickerValuesSP0;
+    private String[] pickerValuesSP1;
 
 
 
@@ -53,16 +55,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        txtSP0 = (TextView)findViewById(R.id.txtSP0);
-        txtSP0.setText("SP0 Waiting for connection...");
-        txtSP0.setBackgroundResource(R.color.colorNotConnected);
-        txtSP0.setOnClickListener(this);
+        txtHeader1 = (TextView)findViewById(R.id.txtSP0);
+        txtHeader1.setText("");
+        txtHeader1.setBackgroundResource(R.color.colorNotConnected);
+        txtHeader1.setOnClickListener(this);
 
-        txtSP1 = (TextView)findViewById(R.id.txtSP1);
-        txtSP1.setText("SP1 Waiting for connection...");
-        txtSP1.setBackgroundResource(R.color.colorNotConnected);
-        txtSP1.setOnClickListener(this);
+        txtSP0Status = (TextView)findViewById(R.id.txtSP0Status);
+        txtSP0Status.setText("SP0..");
+        txtSP0Status.setBackgroundResource(R.color.colorNotConnected);
+        txtSP0Status.setOnClickListener(this);
 
+
+        txtSP1Status = (TextView)findViewById(R.id.txtSP1Status);
+        txtSP1Status.setText("SP1..");
+        txtSP1Status.setBackgroundResource(R.color.colorNotConnected);
+        txtSP1Status.setOnClickListener(this);
 
 
 
@@ -100,10 +107,41 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         bttnGetCash.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                ItlCurrency cur = new ItlCurrency();
-                cur.country = "USD";
-                cur.value = 500;
-                GetPayout("SP0").PayoutAmount(cur);
+
+
+                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                builder.setTitle("Enter cash request " + m_DeviceCountry);
+
+                final EditText txt = new EditText(mainActivity);
+                txt.setInputType(InputType.TYPE_CLASS_NUMBER);
+                txt.setPadding(20,45,20,45);
+                txt.setGravity(Gravity.CENTER);
+                txt.requestFocus();
+                builder.setView(txt);
+
+
+                builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        ItlCurrency curpay = new ItlCurrency();
+                        curpay.country = m_DeviceCountry;
+                        curpay.value = Integer.valueOf(txt.getText().toString()) * 100;
+                        GetPayout("SP0").PayoutAmount(curpay);
+
+                    }
+                });
+                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                    }
+                });
+
+                builder.show();
+
+
+
+
             }
         });
 
@@ -118,12 +156,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Globals g = (Globals)getApplication();
 
         switch(view.getId()){
-            case R.id.txtSP0:
+            case R.id.txtSP0Status:
                 Intent intentSP0 = new Intent(this, DeviceConfiguration.class);
                 g.SetCurrentSystem(GetPayout("SP0"));
                 startActivity(intentSP0);
                 break;
-            case R.id.txtSP1:
+            case R.id.txtSP1Status:
                 Intent intentSP1 = new Intent(this, DeviceConfiguration.class);
                 g.SetCurrentSystem(GetPayout("SP1"));
                 startActivity(intentSP1);
@@ -133,7 +171,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
 
-    private ThreadBankPayout GetPayout(String payoutName)
+    private ThreadSSPDevice GetPayout(String payoutName)
     {
 
         Globals g = (Globals)getApplication();
@@ -144,53 +182,56 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
 
-    public void DisplayNewSetup(SSPDevice sspDevice, String deviceName)
+    public void DisplayNewSetup(DeviceSetup setup)
     {
+        m_DeviceCountry = setup.PayoutCountries.get(0);
+        UpdateHeaderDisplay(setup);
 
-        ArrayList<ItlCurrencyValue> storedvalue;
-        ArrayList<ItlCurrencyValue> minPayoutValue;
+    }
 
 
-        switch(deviceName){
-            case "SP0":
-                storedvalue = GetPayout("SP0").GetTotalStoredValue();
-                minPayoutValue = GetPayout("SP0").GetMinimumPayout();
-                txtSP0.setBackgroundResource(R.color.colorConnected);
-                txtSP0.setText("SP0: " + sspDevice.type.toString() + " connected " +  sspDevice.shortDatasetVersion  + "\r\n");
-                txtSP0.append("Stored value: " + storedvalue.get(0).country + " " + String.format("%.2f",storedvalue.get(0).realValue) + " ");
-                txtSP0.append("Min value: " + minPayoutValue.get(0).country + " " + String.format("%.2f",minPayoutValue.get(0).realValue) + "\r\n");
-                break;
-            case "SP1":
-                storedvalue = GetPayout("SP1").GetTotalStoredValue();
-                minPayoutValue = GetPayout("SP1").GetMinimumPayout();
-                txtSP1.setBackgroundResource(R.color.colorConnected);
-                txtSP1.setText("SP1: " + sspDevice.type.toString() + " connected " +  sspDevice.shortDatasetVersion  + "\r\n");
-                txtSP1.append("Stored value: " + storedvalue.get(0).country + " " + String.format("%.2f",storedvalue.get(0).realValue) + " ");
-                txtSP1.append("Min value: " + minPayoutValue.get(0).country + " " + String.format("%.2f",minPayoutValue.get(0).realValue)  + "\r\n");
-                break;
+    public void UpdateHeaderDisplay(DeviceSetup setup)
+    {
+        txtHeader1.setBackgroundResource(R.color.colorConnected);
+        txtHeader1.setText("Total Value: " + setup.TotalStoredValue.get(0).country + " " + String.valueOf(setup.TotalStoredValue.get(0).value) + "\r\n");
+        txtHeader1.append("Min Value: " +  String.valueOf(setup.MinPayoutValue.get(0).value));
+
+        for (DeviceConnected con: setup.DevConnections
+             ) {
+            switch (con.Tag){
+                case "SP0":
+                    if(con.Connected){
+                        txtSP0Status.setBackgroundResource(R.color.colorConnected);
+                    }else{
+                        txtSP0Status.setBackgroundResource(R.color.colorNotConnected);
+                    }
+                    break;
+                case "SP1":
+                    if(con.Connected){
+                        txtSP1Status.setBackgroundResource(R.color.colorConnected);
+                    }else{
+                        txtSP1Status.setBackgroundResource(R.color.colorNotConnected);
+                    }
+                    break;
+            }
         }
 
     }
 
 
-    public  void DisplayDisconnected(SSPDevice sspDevice, String deviceName)
-    {
-        switch(deviceName){
-            case "SP0":
-                txtSP1.setBackgroundResource(R.color.colorNotConnected);
-                txtSP1.setText("SP0 disconnected\r\n");
-                break;
-            case "SP1":
-                txtSP1.setBackgroundResource(R.color.colorNotConnected);
-                txtSP1.setText("SP1 disconnected\r\n");
-                break;
-        }
 
+    public void DisplayDisconnected(DeviceSetup setup)
+    {
+        UpdateHeaderDisplay(setup);
     }
 
 
-    public  void DisplayPayoutEvents(SSPPayoutEvent ev, String deviceName) {
+    public void DisplayPayoutEvents(DeviceSetup setup) {
 
+        UpdateHeaderDisplay(setup);
+
+
+        /*
 
         ArrayList<ItlCurrencyValue> storedvalue;
         ArrayList<ItlCurrencyValue> minPayoutValue;
@@ -211,17 +252,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         storedvalue = GetPayout("SP0").GetTotalStoredValue();
                         minPayoutValue = GetPayout("SP0").GetMinimumPayout();
                         deviceType = GetPayout("SP0").GetDeviceType();
-                        txtSP0.setText("SP0: " + deviceType + " connected " +  deviceType + "\r\n");
-                        txtSP0.append("Stored value: " + storedvalue.get(0).country + " " + String.format("%.2f",storedvalue.get(0).realValue) + " ");
-                        txtSP0.append("Min value: " + minPayoutValue.get(0).country + " " + String.format("%.2f",minPayoutValue.get(0).realValue) + "\r\n");
+                        txtHeader1.setText("SP0: " + deviceType + " connected " +  m_DeviceCountry + "\r\n");
+                        txtHeader1.append("Stored value: " + storedvalue.get(0).country + " " + String.format("%.2f",storedvalue.get(0).realValue) + " ");
+                        txtHeader1.append("Min value: " + minPayoutValue.get(0).country + " " + String.format("%.2f",minPayoutValue.get(0).realValue) + "\r\n");
                         break;
                     case "SP1":
                         storedvalue = GetPayout("SP1").GetTotalStoredValue();
                         minPayoutValue = GetPayout("SP1").GetMinimumPayout();
                         deviceType = GetPayout("SP1").GetDeviceType();
-                        txtSP1.setText("SP1: " + deviceType + " connected " +  deviceType + "\r\n");
-                        txtSP1.append("Stored value: " + storedvalue.get(0).country + " " + String.format("%.2f",storedvalue.get(0).realValue) + " ");
-                        txtSP1.append("Min value: " + minPayoutValue.get(0).country + " " + String.format("%.2f",minPayoutValue.get(0).realValue)  + "\r\n");
+                        txtSP0Status.setText("SP1: " + deviceType + " connected " +  m_DeviceCountry + "\r\n");
+                        txtSP0Status.append("Stored value: " + storedvalue.get(0).country + " " + String.format("%.2f",storedvalue.get(0).realValue) + " ");
+                        txtSP0Status.append("Min value: " + minPayoutValue.get(0).country + " " + String.format("%.2f",minPayoutValue.get(0).realValue)  + "\r\n");
                         break;
                 }
 
@@ -248,10 +289,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 //TODO handle config failures
                 break;
             case PayoutAmountInvalid:
-
+                ShowAlert("Unable to pay request " + ev.country + " " + String.format("%.2f",(ev.realvalueRequested)));
                 break;
             case PayoutRequestFail:
-                //TODO handle this
+                ShowAlert("Unable to pay request " + ev.country + " " + String.format("%.2f",(ev.realvalueRequested)));
                 break;
 
             case RouteChanged:
@@ -268,7 +309,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
                 break;
 
-        }
+        } */
+    }
+
+
+    private void ShowAlert(String message)
+    {
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+        builder.setTitle(message);
+        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+
+
+            }
+        });
+        builder.show();
+
     }
 
 

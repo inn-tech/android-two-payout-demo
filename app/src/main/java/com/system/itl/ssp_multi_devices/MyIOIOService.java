@@ -56,7 +56,7 @@ public class MyIOIOService extends IOIOService {
     protected IOIOLooper createIOIOLooper() {
 
         if(myIOIOLooperManager == null){
-            myIOIOLooperManager = new MyIOIOLooperManager(this);
+            myIOIOLooperManager = new MyIOIOLooperManager();
             Globals g = (Globals)getApplication();
             g.SetLoopManager(myIOIOLooperManager);
             return myIOIOLooperManager;

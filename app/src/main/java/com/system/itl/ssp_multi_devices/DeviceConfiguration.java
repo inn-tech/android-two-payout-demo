@@ -17,7 +17,6 @@ import java.util.HashMap;
 import device.itl.sspcoms.ItlCurrency;
 import device.itl.sspcoms.PayoutRoute;
 import device.itl.sspcoms.SSPDevice;
-import device.itl.sspcoms.SSPSystem;
 
 import static com.system.itl.ssp_multi_devices.Constants.FIRST_COLUMN;
 import static com.system.itl.ssp_multi_devices.Constants.SECOND_COLUMN;
@@ -32,7 +31,7 @@ public class DeviceConfiguration extends AppCompatActivity {
     TextView txtDevice;
    // SSPSystem sspSystem;
  //   SSPDevice sspDevice;
-    ThreadBankPayout payoutSystem;
+    ThreadSSPDevice payoutSystem;
     ArrayList<HashMap<String, String>> list;
     ArrayList<ItlCurrency> routeUpdate;
     Button bttnApply;
