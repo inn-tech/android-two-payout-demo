@@ -7,7 +7,18 @@ public class Globals extends Application {
 
     private ThreadSSPDevice mPayoutSystem;
     private MyIOIOLooperManager myIOIOLooperManager;
+    private DeviceManager mManager;
 
+
+    public void SetDeviceManager(DeviceManager manager)
+    {
+        mManager = manager;
+    }
+
+    public DeviceManager GetDeviceManager()
+    {
+        return mManager;
+    }
 
     public void SetLoopManager(MyIOIOLooperManager looperManager)
     {
@@ -29,6 +40,8 @@ public class Globals extends Application {
     {
         return mPayoutSystem;
     }
+
+
 
 
 }

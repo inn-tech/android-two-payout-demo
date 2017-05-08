@@ -1,5 +1,7 @@
 package com.system.itl.ssp_multi_devices;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
@@ -12,6 +14,7 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+
 
 
 import device.itl.sspcoms.ItlCurrency;
@@ -48,10 +51,6 @@ public class DeviceConfiguration extends AppCompatActivity {
 
         Globals g = (Globals)getApplication();
         payoutSystem = g.GetCurrentSystem();
-      //  sspSystem = g.getDeviceData();
-     //  currentBankName = g.getThreadBankName();
-     //   sspDevice = sspSystem.GetDevice();
-
         routeUpdate = new ArrayList<>();
         bttnApply = (Button)findViewById(R.id.bttnApplyRoutes);
 
@@ -105,7 +104,7 @@ public class DeviceConfiguration extends AppCompatActivity {
         bttnApply.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
+                SaveRoutesToPreferences(payoutSystem.GetSystemName());
                 // set new route change queue
                 switch (payoutSystem.GetSystemName()){
                     case "SP0":
@@ -122,6 +121,21 @@ public class DeviceConfiguration extends AppCompatActivity {
 
 
     }
+
+
+    private void SaveRoutesToPreferences(String systemName)
+    {
+        SharedPreferences routes = getSharedPreferences(systemName + "_Routes", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = routes.edit();
+
+        for (ItlCurrency cur : payoutSystem.GetDevice().currency
+             ) {
+            editor.putString(cur.country + " " + String.valueOf(cur.value), cur.newRoute.toString() );
+            editor.apply();
+        }
+
+    }
+
 
     public void UpdateDisplay()
     {

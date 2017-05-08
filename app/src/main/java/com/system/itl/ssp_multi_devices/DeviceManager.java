@@ -1,11 +1,12 @@
 package com.system.itl.ssp_multi_devices;
 
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Collections;
 
 import device.itl.sspcoms.ItlCurrency;
 import device.itl.sspcoms.ItlCurrencyValue;
+import device.itl.sspcoms.PayoutRoute;
 import device.itl.sspcoms.SSPDevice;
 import device.itl.sspcoms.SSPPayoutEvent;
 
@@ -169,6 +170,102 @@ class DeviceManager {
         }
 
         return setup;
+    }
+
+
+    /**
+     * Select payouts for requested values
+     * @param curpayout
+     * @return boolean value true for success, false for failure
+     */
+     boolean PayoutAmount(ItlCurrency curpayout)
+    {
+
+        // get all stored levels from both payouts
+        ArrayList<ItlCurrency> payLevels = new ArrayList<>();
+        for (ThreadSSPDevice payout: sspDevices
+                ) {
+            // ignore not connected devices
+            if(payout.GetDevice().IsConnected()) {
+                for (ItlCurrency cur : payout.GetDeviceCurrencyList()
+                        ) {
+                    if (cur.route == PayoutRoute.PayoutStore) {
+                        ItlCurrency c = new ItlCurrency();
+                        c.country = cur.country;
+                        c.value = cur.value;
+                        c.storedLevel = cur.storedLevel;
+                        c.deviceTag = payout.GetSystemName();
+                        payLevels.add(c);
+                    }
+                }
+            }
+        }
+        // sort with highest value first
+        Collections.sort(payLevels, new CustomListComparator());
+
+        //calculate
+        int amt = curpayout.value;
+        for (ItlCurrency st: payLevels
+                ) {
+            if(st.storedLevel > 0) {
+                int levPay = amt / st.value;
+                if (levPay > 0) {
+                    if(st.storedLevel >= levPay) {
+                        st.level = levPay;
+                        amt -= levPay * st.value;
+                        st.storedLevel -= levPay;
+                    }else{
+                        amt -= st.storedLevel * st.value;
+                        st.level = st.storedLevel;
+                        st.storedLevel = 0;
+                    }
+                } else {
+                    st.level = 0;
+                }
+                if (amt == 0){
+                    break;
+                }
+            }
+
+        }
+        // payout not possible
+        if(amt != 0){
+            return false;
+        }
+
+        ItlCurrency cPay1 = new ItlCurrency();
+        cPay1.country = curpayout.country;
+        cPay1.value = 0;
+        cPay1.deviceTag = "SP0";
+        ItlCurrency cPay2 = new ItlCurrency();
+        cPay2.country = curpayout.country;
+        cPay2.value = 0;
+        cPay2.deviceTag = "SP1";
+
+        for (ItlCurrency cur: payLevels
+             ) {
+            if(cur.deviceTag.equals("SP0")){
+                cPay1.value += cur.value * cur.level;
+            }else{
+                cPay2.value += cur.value * cur.level;
+            }
+
+        }
+
+        for (ThreadSSPDevice dev: sspDevices
+             ) {
+            if(dev.GetSystemName().equals("SP0") && cPay1.value > 0){
+                dev.PayoutAmount(cPay1);
+            }
+            if(dev.GetSystemName().equals("SP1") && cPay2.value > 0){
+                dev.PayoutAmount(cPay2);
+            }
+
+        }
+
+
+        return true;
+
     }
 
 

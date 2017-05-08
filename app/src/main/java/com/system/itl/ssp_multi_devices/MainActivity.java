@@ -3,6 +3,7 @@ package com.system.itl.ssp_multi_devices;
 import android.Manifest;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
@@ -123,10 +124,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
+
+
                         ItlCurrency curpay = new ItlCurrency();
                         curpay.country = m_DeviceCountry;
                         curpay.value = Integer.valueOf(txt.getText().toString()) * 100;
-                        GetPayout("SP0").PayoutAmount(curpay);
+                        Globals g = (Globals)getApplication();
+                        MyIOIOLooperManager m =  g.GetLooperManager();
+                        m.GetManagerInstance().PayoutAmount(curpay);
 
                     }
                 });
@@ -138,9 +143,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 });
 
                 builder.show();
-
-
-
 
             }
         });
@@ -184,7 +186,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     public void DisplayNewSetup(DeviceSetup setup)
     {
-        m_DeviceCountry = setup.PayoutCountries.get(0);
+        for (DeviceConnected con: setup.DevConnections
+             ) {
+            if(con.Connected){
+                m_DeviceCountry = setup.PayoutCountries.get(0);
+            }
+        }
         UpdateHeaderDisplay(setup);
 
     }
@@ -193,8 +200,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void UpdateHeaderDisplay(DeviceSetup setup)
     {
         txtHeader1.setBackgroundResource(R.color.colorConnected);
-        txtHeader1.setText("Total Value: " + setup.TotalStoredValue.get(0).country + " " + String.valueOf(setup.TotalStoredValue.get(0).value) + "\r\n");
-        txtHeader1.append("Min Value: " +  String.valueOf(setup.MinPayoutValue.get(0).value));
+        if(setup.TotalStoredValue.size() > 0) {
+            txtHeader1.setText("Total Value: " + setup.TotalStoredValue.get(0).country + " " + String.valueOf(setup.TotalStoredValue.get(0).value) + "\r\n");
+            txtHeader1.append("Min Value: " + String.valueOf(setup.MinPayoutValue.get(0).value));
+        }
+
 
         for (DeviceConnected con: setup.DevConnections
              ) {

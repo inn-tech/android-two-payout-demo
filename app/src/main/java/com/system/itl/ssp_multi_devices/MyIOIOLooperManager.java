@@ -78,5 +78,10 @@ class MyIOIOLooperManager extends BaseIOIOLooper {
 
     }
 
+    DeviceManager GetManagerInstance()
+    {
+        return deviceManager;
+    }
+
 
 }

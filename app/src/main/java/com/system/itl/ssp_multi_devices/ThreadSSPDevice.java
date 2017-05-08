@@ -4,6 +4,7 @@ package com.system.itl.ssp_multi_devices;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.util.Log;
 
 import java.io.IOException;
@@ -255,6 +256,42 @@ class ThreadSSPDevice extends Thread implements  DeviceSetupListener, DeviceEven
     @Override
     public void OnNewDeviceSetup(SSPDevice sspDevice) {
         synchronized (ThreadSSPDevice.this) {
+
+
+            // apply stored config for routes
+            SharedPreferences routes =
+                    MainActivity.mainActivity.getSharedPreferences(ssp.GetSystemName()
+                            + "_Routes", Context.MODE_PRIVATE);
+            if(routes != null) { // settings exist
+                for (ItlCurrency cur : sspDevice.currency
+                        ) {
+                    String rt = routes.getString(cur.country + " " + String.valueOf(cur.value),"none");
+                    // get this value and code
+                    if (!rt.equals("none")){
+                        // saved as PAYOUT
+                        if(rt.equals("PS")){
+                            if(cur.route == PayoutRoute.Cashbox){
+                                // change to payout
+                                cur.newRoute = PayoutRoute.PayoutStore;
+                                cur.routeChangeRequest = true;
+                            }
+                        }
+                        //saved as CASHBOX
+                        if(rt.equals("CB")){
+                            if(cur.route == PayoutRoute.PayoutStore){
+                                // change to cashbox
+                                cur.newRoute = PayoutRoute.Cashbox;
+                                cur.routeChangeRequest = true;
+                            }
+                        }
+                    }
+                }
+                // set command to change requested routes on object
+                ssp.RunRouteQueue();
+
+            }
+
+            // call setup event in manager
             managerInstance.NewSetupEvent(sspDevice, ssp.GetSystemName());
         }
     }
