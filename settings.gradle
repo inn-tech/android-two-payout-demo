@@ -1,0 +1,3 @@
+include ':app'
+include 'sspcoms'
+project(':sspcoms').projectDir = new File(settingsDir,'../modules/sspcoms')
