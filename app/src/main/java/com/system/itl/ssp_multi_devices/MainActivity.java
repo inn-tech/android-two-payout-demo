@@ -3,7 +3,6 @@ package com.system.itl.ssp_multi_devices;
 import android.Manifest;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
@@ -21,11 +20,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import java.util.ArrayList;
-
 import device.itl.sspcoms.ItlCurrency;
-import device.itl.sspcoms.ItlCurrencyValue;
-import device.itl.sspcoms.SSPDevice;
 import device.itl.sspcoms.SSPPayoutEvent;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
@@ -35,10 +30,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     TextView txtHeader1;
     TextView txtSP0Status;
     TextView txtSP1Status;
+    TextView txtBuy1;
+    TextView txtBuy2;
+    TextView txtBuy3;
 
     private String m_DeviceCountry;
-    private String[] pickerValuesSP0;
-    private String[] pickerValuesSP1;
+    private int[] vendValues;
+
 
 
 
@@ -72,8 +70,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         txtSP1Status.setBackgroundResource(R.color.colorNotConnected);
         txtSP1Status.setOnClickListener(this);
 
+        vendValues = new int[] {5,10,20};
 
+        txtBuy1 = (TextView)findViewById(R.id.txtBuy1);
+        txtBuy1.setText(String.valueOf(vendValues[0]) + ".00");
+        txtBuy2 = (TextView)findViewById(R.id.txtBuy2);
+        txtBuy2.setText(String.valueOf(vendValues[1]) + ".00");
+        txtBuy3 = (TextView)findViewById(R.id.txtBuy3);
+        txtBuy3.setText(String.valueOf(vendValues[2]) + ".00");
 
+        Button bttnBuy1 = (Button)findViewById(R.id.bttnBuy1);
+        bttnBuy1.setOnClickListener(this);
+        Button bttnBuy2 = (Button)findViewById(R.id.bttnBuy2);
+        bttnBuy2.setOnClickListener(this);
+        Button bttnBuy3 = (Button)findViewById(R.id.bttnBuy3);
+        bttnBuy3.setOnClickListener(this);
 
         /* ask for permission to storeage read  */
         int permissionCheck = ContextCompat.checkSelfPermission(this,
@@ -129,9 +140,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         ItlCurrency curpay = new ItlCurrency();
                         curpay.country = m_DeviceCountry;
                         curpay.value = Integer.valueOf(txt.getText().toString()) * 100;
+                        curpay.realvalue = curpay.value/100;
                         Globals g = (Globals)getApplication();
                         MyIOIOLooperManager m =  g.GetLooperManager();
-                        m.GetManagerInstance().PayoutAmount(curpay);
+                        if(!m.GetManagerInstance().PayoutAmount(curpay)){
+                            ShowAlert("Unable to pay request " + curpay.country + " " + String.format("%.2f",(curpay.realvalue)));
+                        }
 
                     }
                 });
@@ -156,6 +170,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View view) {
 
         Globals g = (Globals)getApplication();
+        MyIOIOLooperManager m0 =  g.GetLooperManager();
+        ItlCurrency curbuy = new ItlCurrency();
 
         switch(view.getId()){
             case R.id.txtSP0Status:
@@ -167,6 +183,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Intent intentSP1 = new Intent(this, DeviceConfiguration.class);
                 g.SetCurrentSystem(GetPayout("SP1"));
                 startActivity(intentSP1);
+                break;
+            case R.id.bttnBuy1:
+                curbuy.country = m_DeviceCountry;
+                curbuy.value = vendValues[0] * 100;
+                m0.GetManagerInstance().BuyItem(curbuy);
+                break;
+            case R.id.bttnBuy2:
+                curbuy.country = m_DeviceCountry;
+                curbuy.value = vendValues[1] * 100;
+                m0.GetManagerInstance().BuyItem(curbuy);
+                break;
+            case R.id.bttnBuy3:
+                curbuy.country = m_DeviceCountry;
+                curbuy.value = vendValues[2] * 100;
+                m0.GetManagerInstance().BuyItem(curbuy);
                 break;
         }
 
@@ -195,6 +226,41 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         UpdateHeaderDisplay(setup);
 
     }
+
+
+    public void UpdatePayoutStatus(SSPPayoutEvent.PayoutEvent ev, DeviceValue payStatus)
+    {
+        switch(ev)
+        {
+            case PayoutStarted:
+                txtSP0Status.setText("Requested payout " + String.valueOf(payStatus.requestedValue/100));
+            break;
+            case PayoutEnded:
+                txtSP1Status.setText("Pay complete " + String.valueOf(payStatus.GetPaidTotal() /100));
+            break;
+            case CashPaidOut:
+                txtSP1Status.setText("Paid " + String.valueOf(payStatus.GetPaidTotal()/100));
+                break;
+        }
+    }
+
+
+    public void UpdatePayinStatus(SSPPayoutEvent.PayoutEvent ev, DeviceValue payStatus)
+    {
+        switch(ev)
+        {
+            case PayinStarted:
+                txtSP0Status.setText("Pay value " + String.valueOf(payStatus.requestedValue/100));
+                break;
+            case PayinEnded:
+                txtSP1Status.setText("Pay in complete " + String.valueOf(payStatus.GetPaidTotal()/100));
+                break;
+            case CashPaidIn:
+                txtSP1Status.setText("Paid " + String.valueOf(payStatus.GetPaidTotal() /100));
+                break;
+        }
+    }
+
 
 
     public void UpdateHeaderDisplay(DeviceSetup setup)
@@ -236,94 +302,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
 
-    public void DisplayPayoutEvents(DeviceSetup setup) {
+    public void DisplaySystemStatus(DeviceSetup setup) {
 
         UpdateHeaderDisplay(setup);
 
-
-        /*
-
-        ArrayList<ItlCurrencyValue> storedvalue;
-        ArrayList<ItlCurrencyValue> minPayoutValue;
-        String deviceType;
-
-
-        switch (ev.event) {
-            case CashPaidOut:
-
-                break;
-            case CashStoreInPayout:
-
-                break;
-            case CashLevelsChanged:
-
-                switch(deviceName){
-                    case "SP0":
-                        storedvalue = GetPayout("SP0").GetTotalStoredValue();
-                        minPayoutValue = GetPayout("SP0").GetMinimumPayout();
-                        deviceType = GetPayout("SP0").GetDeviceType();
-                        txtHeader1.setText("SP0: " + deviceType + " connected " +  m_DeviceCountry + "\r\n");
-                        txtHeader1.append("Stored value: " + storedvalue.get(0).country + " " + String.format("%.2f",storedvalue.get(0).realValue) + " ");
-                        txtHeader1.append("Min value: " + minPayoutValue.get(0).country + " " + String.format("%.2f",minPayoutValue.get(0).realValue) + "\r\n");
-                        break;
-                    case "SP1":
-                        storedvalue = GetPayout("SP1").GetTotalStoredValue();
-                        minPayoutValue = GetPayout("SP1").GetMinimumPayout();
-                        deviceType = GetPayout("SP1").GetDeviceType();
-                        txtSP0Status.setText("SP1: " + deviceType + " connected " +  m_DeviceCountry + "\r\n");
-                        txtSP0Status.append("Stored value: " + storedvalue.get(0).country + " " + String.format("%.2f",storedvalue.get(0).realValue) + " ");
-                        txtSP0Status.append("Min value: " + minPayoutValue.get(0).country + " " + String.format("%.2f",minPayoutValue.get(0).realValue)  + "\r\n");
-                        break;
-                }
-
-                break;
-            case PayoutStarted:
-
-                break;
-            case PayoutEnded:
-
-                break;
-            case PayinStarted:
-
-                break;
-            case PayinEnded:
-
-                break;
-            case EmptyStarted:
-
-                break;
-            case EmptyEnded:
-
-                break;
-            case PayoutConfigurationFail:
-                //TODO handle config failures
-                break;
-            case PayoutAmountInvalid:
-                ShowAlert("Unable to pay request " + ev.country + " " + String.format("%.2f",(ev.realvalueRequested)));
-                break;
-            case PayoutRequestFail:
-                ShowAlert("Unable to pay request " + ev.country + " " + String.format("%.2f",(ev.realvalueRequested)));
-                break;
-
-            case RouteChanged:
-
-
-                break;
-            case PayoutDeviceNotConnected:
-
-                break;
-            case PayoutDeviceEmpty:
-
-                break;
-            case PayoutDeviceDisabled:
-
-                break;
-
-        } */
     }
 
 
-    private void ShowAlert(String message)
+    public void ShowAlert(String message)
     {
 
         AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
@@ -365,17 +351,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
+        Globals g = (Globals)getApplication();
+        MyIOIOLooperManager m =  g.GetLooperManager();
+
 
         switch(id){
             case R.id.action_settings:
                 break;
             case R.id.action_start_refill:
-                GetPayout("SP0").SSPEnable();
-                GetPayout("SP1").SSPEnable();
+                m.GetManagerInstance().RefillMode(true);
                 break;
             case R.id.action_stop_refill:
-                GetPayout("SP0").SSPDisable();
-                GetPayout("SP1").SSPDisable();
+                m.GetManagerInstance().RefillMode(false);
                 break;
         }
 

@@ -10,17 +10,36 @@ import device.itl.sspcoms.PayoutRoute;
 import device.itl.sspcoms.SSPDevice;
 import device.itl.sspcoms.SSPPayoutEvent;
 
+import static device.itl.sspcoms.SSPPayoutEvent.PayoutEvent.CashPaidIn;
+import static device.itl.sspcoms.SSPPayoutEvent.PayoutEvent.PayinEnded;
+import static device.itl.sspcoms.SSPPayoutEvent.PayoutEvent.PayoutEnded;
+
 class DeviceManager {
+
+
+    private enum SystemPayMode{
+        Idle,
+        PayIn,
+        PayOut,
+        Refill,
+    }
 
 
     private ArrayList<ThreadSSPDevice> sspDevices;
     private ArrayList<ThreadFlashes> ledFlashes;
-
+    private DeviceValue payoutRequestStatus;
+    private DeviceValue payinRequestStatus;
+    private SystemPayMode payMode;
 
 
     DeviceManager() {
         sspDevices = new ArrayList<>();
         ledFlashes = new ArrayList<>();
+
+        payoutRequestStatus = new DeviceValue(2);
+        payinRequestStatus = new DeviceValue(2);
+        payMode = SystemPayMode.Idle;
+
     }
 
 
@@ -173,14 +192,61 @@ class DeviceManager {
     }
 
 
+    void RefillMode(boolean enable)
+    {
+
+        for (ThreadSSPDevice s: sspDevices
+             ) {
+            if(enable){
+                payMode = SystemPayMode.Refill;
+                s.SSPEnable();
+            }else{
+                payMode = SystemPayMode.Idle;
+                s.SSPDisable();
+            }
+        }
+    }
+
+
+    /**
+     *
+     * @param curbuy
+     * @return
+     */
+    boolean BuyItem(final ItlCurrency curbuy)
+    {
+        payinRequestStatus.country = curbuy.country;
+        payinRequestStatus.requestedValue = curbuy.value;
+        payinRequestStatus.paidValue[0] = 0;
+        payinRequestStatus.paidValue[1] = 0;
+
+        payMode = SystemPayMode.PayIn;
+        // enable devices
+        for (ThreadSSPDevice dev : sspDevices
+                ) {
+            dev.SSPEnable();
+        }
+
+
+
+        return true;
+    }
+
+
     /**
      * Select payouts for requested values
      * @param curpayout
      * @return boolean value true for success, false for failure
      */
-     boolean PayoutAmount(ItlCurrency curpayout)
+     boolean PayoutAmount(final ItlCurrency curpayout)
     {
 
+        payoutRequestStatus.country = curpayout.country;
+        payoutRequestStatus.requestedValue = curpayout.value;
+        payoutRequestStatus.paidValue[0] = 0;
+        payoutRequestStatus.paidValue[1] = 0;
+
+        payMode = SystemPayMode.PayOut;
         // get all stored levels from both payouts
         ArrayList<ItlCurrency> payLevels = new ArrayList<>();
         for (ThreadSSPDevice payout: sspDevices
@@ -295,12 +361,184 @@ class DeviceManager {
 
     void NewBillPayoutEvent(final SSPPayoutEvent ev, final String tag) {
 
+        // update the main status display
         MainActivity.mainActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                MainActivity.mainActivity.DisplayPayoutEvents(GetSetup());
+                MainActivity.mainActivity.DisplaySystemStatus(GetSetup());
             }
         });
+
+
+        switch (ev.event) {
+            case CashPaidOut:
+                MainActivity.mainActivity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if(tag.equals("SP0")) {
+                            payoutRequestStatus.paidValue[0] = ev.value;
+                        }
+                        if(tag.equals("SP1")){
+                            payoutRequestStatus.paidValue[1] = ev.value;
+                        }
+                        MainActivity.mainActivity.UpdatePayoutStatus(ev.event,payoutRequestStatus);
+                    }
+                });
+                break;
+            case CashStoreInPayout:
+
+                break;
+            case CashLevelsChanged:
+
+
+                break;
+            case PayoutStarted:
+                MainActivity.mainActivity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        MainActivity.mainActivity.UpdatePayoutStatus(ev.event,payoutRequestStatus);
+                    }
+                });
+                break;
+            case PayoutEnded:
+                // have we paid total from both
+                if(payoutRequestStatus.paidValue[0] +
+                        payoutRequestStatus.paidValue[1] == payoutRequestStatus.requestedValue) {
+                    MainActivity.mainActivity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            MainActivity.mainActivity.UpdatePayoutStatus(PayoutEnded, payoutRequestStatus);
+                        }
+                    });
+                }
+                // disable after payout
+                for (ThreadSSPDevice s: sspDevices
+                        ) {
+                    if(s.GetSystemName().equals(tag)){
+                        s.SSPDisable();
+                    }
+                }
+                break;
+            case PayinStarted:
+                MainActivity.mainActivity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        MainActivity.mainActivity.UpdatePayinStatus(ev.event,payinRequestStatus);
+                    }
+                });
+                break;
+            case PayinEnded:
+                /*
+                // have we paid total from both
+                if(tag.equals("SP0")) {
+                    payoutRequestStatus.paidValue[0] += ev.value;
+                }
+                if(tag.equals("SP1")){
+                    payoutRequestStatus.paidValue[1] += ev.value;
+                }
+                MainActivity.mainActivity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        MainActivity.mainActivity.UpdatePayinStatus(CashPaidIn,payoutRequestStatus);
+                    }
+                });
+                if(payoutRequestStatus.paidValue[0] +
+                        payoutRequestStatus.paidValue[1] >= payoutRequestStatus.requestedValue) {
+                    MainActivity.mainActivity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            MainActivity.mainActivity.UpdatePayoutStatus(PayoutEnded, payoutRequestStatus);
+                        }
+                    });
+                    // disable after payout
+                    for (ThreadSSPDevice s: sspDevices
+                            ) {
+                        if(s.GetSystemName().equals(tag)){
+                            s.SSPDisable();
+                        }
+                    }
+
+                }
+                */
+                break;
+            case CashPaidIn:
+                if(tag.equals("SP0")) {
+                    payinRequestStatus.paidValue[0] += ev.value;
+                }
+                if(tag.equals("SP1")){
+                    payinRequestStatus.paidValue[1] += ev.value;
+                }
+                MainActivity.mainActivity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        MainActivity.mainActivity.UpdatePayinStatus(CashPaidIn,payinRequestStatus);
+                    }
+                });
+                // have we paid >= requested value
+                if(payMode == SystemPayMode.PayIn && payinRequestStatus.GetPaidTotal() >= payinRequestStatus.requestedValue) {
+                    MainActivity.mainActivity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            MainActivity.mainActivity.UpdatePayinStatus(PayinEnded, payinRequestStatus);
+                        }
+                    });
+                    // disable after payout for all bills in
+                    for (ThreadSSPDevice s: sspDevices
+                            ) {
+                            s.SSPDisable();
+                    }
+
+                    if(payinRequestStatus.GetPaidTotal() > payinRequestStatus.requestedValue){
+                        final ItlCurrency change = new ItlCurrency();
+                        change.country = payinRequestStatus.country;
+                        change.value = payinRequestStatus.GetPaidTotal() - payinRequestStatus.requestedValue;
+                        PayoutAmount(change);
+                    }
+                }
+                break;
+            case EmptyStarted:
+
+                break;
+            case EmptyEnded:
+
+                break;
+            case PayoutConfigurationFail:
+                //TODO handle config failures
+                break;
+            case PayoutAmountInvalid:
+                MainActivity.mainActivity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        MainActivity.mainActivity.ShowAlert("Unable to pay request " + ev.country + " " + String.format("%.2f",(ev.realvalueRequested)));
+                    }
+                });
+                break;
+            case PayoutRequestFail:
+                MainActivity.mainActivity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        MainActivity.mainActivity.ShowAlert("Unable to pay request " + ev.country + " " + String.format("%.2f",(ev.realvalueRequested)));
+                    }
+                });
+                break;
+
+            case RouteChanged:
+
+
+                break;
+            case PayoutDeviceNotConnected:
+
+                break;
+            case PayoutDeviceEmpty:
+
+                break;
+            case PayoutDeviceDisabled:
+
+                break;
+
+        }
+
+
 
 
     }

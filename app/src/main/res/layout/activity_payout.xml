@@ -89,7 +89,7 @@
         android:orientation="horizontal">
 
         <Button
-            android:id="@+id/button11"
+            android:id="@+id/bttnBuy1"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
@@ -99,7 +99,7 @@
             android:text="@string/buy" />
 
         <TextView
-            android:id="@+id/textView6"
+            android:id="@+id/txtBuy1"
             android:layout_width="0dp"
             android:layout_margin="15dp"
             android:layout_gravity="center"
@@ -116,7 +116,7 @@
         android:orientation="horizontal">
 
         <Button
-            android:id="@+id/button12"
+            android:id="@+id/bttnBuy2"
             android:layout_width="0dp"
             android:layout_margin="15dp"
             android:layout_height="wrap_content"
@@ -126,7 +126,7 @@
             android:text="@string/buy" />
 
         <TextView
-            android:id="@+id/textView7"
+            android:id="@+id/txtBuy2"
             android:layout_width="0dp"
             android:layout_margin="15dp"
             android:layout_height="wrap_content"
@@ -144,7 +144,7 @@
         android:orientation="horizontal">
 
         <Button
-            android:id="@+id/button9"
+            android:id="@+id/bttnBuy3"
             android:layout_width="0dp"
             android:layout_margin="15dp"
             android:layout_height="wrap_content"
@@ -154,7 +154,7 @@
             android:text="@string/buy" />
 
         <TextView
-            android:id="@+id/textView5"
+            android:id="@+id/txtBuy3"
             android:layout_width="0dp"
             android:layout_margin="15dp"
             android:layout_height="wrap_content"
