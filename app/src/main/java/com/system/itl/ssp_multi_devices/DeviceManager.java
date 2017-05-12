@@ -135,6 +135,7 @@ class DeviceManager {
                         ItlCurrencyValue m1 = new ItlCurrencyValue();
                         m1.country = cur.country;
                         m1.value = (cur.storedLevel > 0 ? cur.value : 0);
+                        m1.realValue = (double)m1.value/100;
                         setup.MinPayoutValue.add(m1);
                     } else {
                         boolean foundmin = false;
@@ -145,6 +146,7 @@ class DeviceManager {
                                 if (cur.storedLevel > 0) {
                                     if (cur.value < m.value || m.value == 0) {
                                         m.value = cur.value;
+                                        m.realValue = (double)m.value/100;
                                     }
                                 }
                             }
@@ -153,6 +155,7 @@ class DeviceManager {
                             ItlCurrencyValue m2 = new ItlCurrencyValue();
                             m2.country = cur.country;
                             m2.value = (cur.storedLevel > 0 ? cur.value : 0);
+                            m2.realValue = (double)m2.value/100;
                             setup.MinPayoutValue.add(m2);
                         }
 
@@ -163,6 +166,7 @@ class DeviceManager {
                         ItlCurrencyValue v1 = new ItlCurrencyValue();
                         v1.country = cur.country;
                         v1.value = cur.value * cur.level;
+                        v1.realValue = (double)v1.value/100;
                         setup.TotalStoredValue.add(v1);
                     } else {
                         boolean found = false;
@@ -172,6 +176,7 @@ class DeviceManager {
                             if (v.country.equals(cur.country)) {
                                 // add value
                                 v.value += (cur.storedLevel * cur.value);
+                                v.realValue += (double)(cur.storedLevel * cur.value)/100;
                                 found = true;
                             }
                         }
@@ -180,6 +185,7 @@ class DeviceManager {
                             ItlCurrencyValue v2 = new ItlCurrencyValue();
                             v2.country = cur.country;
                             v2.value = (cur.storedLevel * cur.value);
+                            v2.realValue = (double)v2.value/100;
                             setup.TotalStoredValue.add(v2);
                         }
                     }
@@ -195,6 +201,7 @@ class DeviceManager {
     void RefillMode(boolean enable)
     {
 
+        payinRequestStatus.ResetPaidTotal();
         for (ThreadSSPDevice s: sspDevices
              ) {
             if(enable){
@@ -232,6 +239,18 @@ class DeviceManager {
         return true;
     }
 
+
+    void CancelBuy()
+    {
+        payinRequestStatus.requestedValue = 0;
+        payinRequestStatus.ResetPaidTotal();
+        payMode = SystemPayMode.Idle;
+        for (ThreadSSPDevice dev : sspDevices
+                ) {
+            dev.SSPDisable();
+        }
+
+    }
 
     /**
      * Select payouts for requested values
@@ -428,38 +447,7 @@ class DeviceManager {
                 });
                 break;
             case PayinEnded:
-                /*
-                // have we paid total from both
-                if(tag.equals("SP0")) {
-                    payoutRequestStatus.paidValue[0] += ev.value;
-                }
-                if(tag.equals("SP1")){
-                    payoutRequestStatus.paidValue[1] += ev.value;
-                }
-                MainActivity.mainActivity.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        MainActivity.mainActivity.UpdatePayinStatus(CashPaidIn,payoutRequestStatus);
-                    }
-                });
-                if(payoutRequestStatus.paidValue[0] +
-                        payoutRequestStatus.paidValue[1] >= payoutRequestStatus.requestedValue) {
-                    MainActivity.mainActivity.runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            MainActivity.mainActivity.UpdatePayoutStatus(PayoutEnded, payoutRequestStatus);
-                        }
-                    });
-                    // disable after payout
-                    for (ThreadSSPDevice s: sspDevices
-                            ) {
-                        if(s.GetSystemName().equals(tag)){
-                            s.SSPDisable();
-                        }
-                    }
 
-                }
-                */
                 break;
             case CashPaidIn:
                 if(tag.equals("SP0")) {
@@ -474,6 +462,16 @@ class DeviceManager {
                         MainActivity.mainActivity.UpdatePayinStatus(CashPaidIn,payinRequestStatus);
                     }
                 });
+
+                if(payMode == SystemPayMode.PayIn){
+                    MainActivity.mainActivity.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            MainActivity.mainActivity.UpdateBuyStatus(payinRequestStatus);
+                        }
+                    });
+                }
+
                 // have we paid >= requested value
                 if(payMode == SystemPayMode.PayIn && payinRequestStatus.GetPaidTotal() >= payinRequestStatus.requestedValue) {
                     MainActivity.mainActivity.runOnUiThread(new Runnable() {
@@ -492,7 +490,16 @@ class DeviceManager {
                         final ItlCurrency change = new ItlCurrency();
                         change.country = payinRequestStatus.country;
                         change.value = payinRequestStatus.GetPaidTotal() - payinRequestStatus.requestedValue;
-                        PayoutAmount(change);
+                        payinRequestStatus.ResetPaidTotal();
+                        boolean ret = PayoutAmount(change);
+                        if(!ret){
+                            MainActivity.mainActivity.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    MainActivity.mainActivity.ShowAlert("Cannot pay: " + change.country + change.value);
+                                }
+                            });
+                        }
                     }
                 }
                 break;

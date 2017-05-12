@@ -23,4 +23,27 @@ class DeviceValue {
         return tot;
     }
 
+    double GetRealRequestedValue(){
+
+        return (double)requestedValue/100;
+    }
+
+    double GetPaidTotalRealValue()
+    {
+
+        double tot = 0;
+        for (int i: paidValue
+                ) {
+            tot += (double)i;
+        }
+        return (tot/100);
+    }
+
+    void ResetPaidTotal(){
+        for (int i: paidValue
+                ) {
+                i = 0;
+        }
+    }
+
 }

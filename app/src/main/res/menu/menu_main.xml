@@ -3,21 +3,29 @@
     xmlns:tools="http://schemas.android.com/tools"
     tools:context="com.system.itl.ssp_multi_devices.MainActivity">
     <item
-    android:id="@+id/action_settings"
-    android:orderInCategory="100"
-    android:title="@string/action_settings"
-    app:showAsAction="never" />
+        android:id="@+id/action_settings"
+        android:orderInCategory="100"
+        android:title="@string/action_settings"
+        app:showAsAction="never" />
 
     <item
         android:id="@+id/action_start_refill"
-        android:orderInCategory="100"
+        android:orderInCategory="101"
         android:title="Start Refill"
         app:showAsAction="never" />
 
     <item
-        android:id="@+id/action_stop_refill"
-        android:orderInCategory="100"
-        android:title="Stop Refill"
+        android:id="@+id/action_sp0"
+        android:orderInCategory="102"
+        android:title="SP0 Configuration"
         app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_sp1"
+        android:orderInCategory="103"
+        android:title="SP1 Configuration"
+        app:showAsAction="never" />
+
+
 
 </menu>

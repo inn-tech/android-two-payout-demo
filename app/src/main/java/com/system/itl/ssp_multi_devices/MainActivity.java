@@ -1,6 +1,7 @@
 package com.system.itl.ssp_multi_devices;
 
 import android.Manifest;
+import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -12,12 +13,15 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.text.InputType;
 import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import device.itl.sspcoms.ItlCurrency;
@@ -33,10 +37,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     TextView txtBuy1;
     TextView txtBuy2;
     TextView txtBuy3;
+    TextView refillStatus;
+    TextView txtBuyStatus;
+    Dialog dialogBuy = null;
 
     private String m_DeviceCountry;
     private int[] vendValues;
-
 
 
 
@@ -54,21 +60,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
+
         txtHeader1 = (TextView)findViewById(R.id.txtSP0);
         txtHeader1.setText("");
         txtHeader1.setBackgroundResource(R.color.colorNotConnected);
         txtHeader1.setOnClickListener(this);
 
         txtSP0Status = (TextView)findViewById(R.id.txtSP0Status);
-        txtSP0Status.setText("SP0..");
+        txtSP0Status.setText("");
         txtSP0Status.setBackgroundResource(R.color.colorNotConnected);
-        txtSP0Status.setOnClickListener(this);
-
 
         txtSP1Status = (TextView)findViewById(R.id.txtSP1Status);
-        txtSP1Status.setText("SP1..");
+        txtSP1Status.setText("");
         txtSP1Status.setBackgroundResource(R.color.colorNotConnected);
-        txtSP1Status.setOnClickListener(this);
 
         vendValues = new int[] {5,10,20};
 
@@ -110,9 +114,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
                 /* start and run threads controlling devices */
         startService(new Intent(getBaseContext(),MyIOIOService.class));
-
-
-
 
 
         Button bttnGetCash = (Button)findViewById(R.id.bttnGetCash);
@@ -174,30 +175,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         ItlCurrency curbuy = new ItlCurrency();
 
         switch(view.getId()){
-            case R.id.txtSP0Status:
-                Intent intentSP0 = new Intent(this, DeviceConfiguration.class);
-                g.SetCurrentSystem(GetPayout("SP0"));
-                startActivity(intentSP0);
-                break;
-            case R.id.txtSP1Status:
-                Intent intentSP1 = new Intent(this, DeviceConfiguration.class);
-                g.SetCurrentSystem(GetPayout("SP1"));
-                startActivity(intentSP1);
-                break;
             case R.id.bttnBuy1:
                 curbuy.country = m_DeviceCountry;
                 curbuy.value = vendValues[0] * 100;
-                m0.GetManagerInstance().BuyItem(curbuy);
+                ShowBuyDialog(curbuy);
                 break;
             case R.id.bttnBuy2:
                 curbuy.country = m_DeviceCountry;
                 curbuy.value = vendValues[1] * 100;
-                m0.GetManagerInstance().BuyItem(curbuy);
+                ShowBuyDialog(curbuy);
                 break;
             case R.id.bttnBuy3:
                 curbuy.country = m_DeviceCountry;
                 curbuy.value = vendValues[2] * 100;
-                m0.GetManagerInstance().BuyItem(curbuy);
+                ShowBuyDialog(curbuy);
                 break;
         }
 
@@ -225,6 +216,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
         UpdateHeaderDisplay(setup);
 
+
+        LinearLayout spLayout = (LinearLayout)findViewById(R.id.content_smart_payout);
+        spLayout.setVisibility(View.VISIBLE);
+        LinearLayout mLayout = (LinearLayout)findViewById(R.id.content_main);
+        mLayout.setVisibility(View.INVISIBLE);
+
+
     }
 
 
@@ -233,13 +231,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         switch(ev)
         {
             case PayoutStarted:
-                txtSP0Status.setText("Requested payout " + String.valueOf(payStatus.requestedValue/100));
+                txtSP0Status.setText("Requested payout " + String.format("%.2f",(double)payStatus.GetRealRequestedValue()));
             break;
             case PayoutEnded:
-                txtSP1Status.setText("Pay complete " + String.valueOf(payStatus.GetPaidTotal() /100));
+                txtSP1Status.setText("Pay complete " + String.format("%.2f",payStatus.GetPaidTotalRealValue()));
             break;
             case CashPaidOut:
-                txtSP1Status.setText("Paid " + String.valueOf(payStatus.GetPaidTotal()/100));
+                txtSP1Status.setText("Paid " + String.format("%.2f",payStatus.GetPaidTotalRealValue()));
                 break;
         }
     }
@@ -250,16 +248,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         switch(ev)
         {
             case PayinStarted:
-                txtSP0Status.setText("Pay value " + String.valueOf(payStatus.requestedValue/100));
+                txtSP0Status.setText("Pay value " + String.format("%.2f",payStatus.GetRealRequestedValue()));
                 break;
             case PayinEnded:
-                txtSP1Status.setText("Pay in complete " + String.valueOf(payStatus.GetPaidTotal()/100));
+                txtSP1Status.setText("Pay in complete " + String.format("%.2f",payStatus.GetPaidTotalRealValue()));
                 break;
             case CashPaidIn:
-                txtSP1Status.setText("Paid " + String.valueOf(payStatus.GetPaidTotal() /100));
+                txtSP1Status.setText("Paid " + String.format("%.2f",payStatus.GetPaidTotalRealValue()));
                 break;
         }
     }
+
+
 
 
 
@@ -267,8 +267,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     {
         txtHeader1.setBackgroundResource(R.color.colorConnected);
         if(setup.TotalStoredValue.size() > 0) {
-            txtHeader1.setText("Total Value: " + setup.TotalStoredValue.get(0).country + " " + String.valueOf(setup.TotalStoredValue.get(0).value) + "\r\n");
-            txtHeader1.append("Min Value: " + String.valueOf(setup.MinPayoutValue.get(0).value));
+            txtHeader1.setText("Total Value: " + setup.TotalStoredValue.get(0).country + " " + String.format("%.2f",setup.TotalStoredValue.get(0).realValue) + "\r\n");
+            txtHeader1.append("Min Value: " + String.format("%.2f",setup.MinPayoutValue.get(0).realValue));
+
+            if(refillStatus != null){
+                refillStatus.setText("Total Value: " + setup.TotalStoredValue.get(0).country + " " + String.format("%.2f",setup.TotalStoredValue.get(0).realValue));
+            }
+
         }
 
 
@@ -295,6 +300,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
 
+    public void UpdateBuyStatus(DeviceValue value)
+    {
+
+        if(dialogBuy != null){
+            txtBuyStatus.setText("Paid: " + value.country + " " +
+                    String.format("%.2f",value.GetPaidTotalRealValue()));
+            // all paid, close dialog
+            if(value.GetPaidTotal() >= value.requestedValue){
+                dialogBuy.dismiss();
+            }
+        }
+
+    }
+
 
     public void DisplayDisconnected(DeviceSetup setup)
     {
@@ -312,13 +331,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void ShowAlert(String message)
     {
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+        final AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
         builder.setTitle(message);
         builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-
-
+                    dialog.dismiss();
             }
         });
         builder.show();
@@ -352,22 +370,112 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
         Globals g = (Globals)getApplication();
-        MyIOIOLooperManager m =  g.GetLooperManager();
+        final MyIOIOLooperManager m =  g.GetLooperManager();
 
 
         switch(id){
             case R.id.action_settings:
                 break;
-            case R.id.action_start_refill:
-                m.GetManagerInstance().RefillMode(true);
+
+            case R.id.action_sp0:
+                Intent intentSP0 = new Intent(this, DeviceConfiguration.class);
+                g.SetCurrentSystem(GetPayout("SP0"));
+                startActivity(intentSP0);
                 break;
-            case R.id.action_stop_refill:
-                m.GetManagerInstance().RefillMode(false);
+            case R.id.action_sp1:
+                Intent intentSP1 = new Intent(this, DeviceConfiguration.class);
+                g.SetCurrentSystem(GetPayout("SP1"));
+                startActivity(intentSP1);
+                break;
+
+            case R.id.action_start_refill:
+
+                ShowRefillDialog();
                 break;
         }
 
         return super.onOptionsItemSelected(item);
     }
+
+
+    private void ShowRefillDialog() {
+
+        Globals g = (Globals)getApplication();
+        final MyIOIOLooperManager m =  g.GetLooperManager();
+
+        m.GetManagerInstance().RefillMode(true);
+        final Dialog dialog = new Dialog(this,
+                android.R.style.Theme_Translucent_NoTitleBar);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_refill);
+        WindowManager.LayoutParams lp = new WindowManager.LayoutParams();
+        lp.copyFrom(dialog.getWindow().getAttributes());
+        lp.width = WindowManager.LayoutParams.MATCH_PARENT;
+        lp.height = WindowManager.LayoutParams.WRAP_CONTENT;
+        lp.gravity = Gravity.CENTER;
+
+        dialog.getWindow().setAttributes(lp);
+
+        Button yes = (Button) dialog.findViewById(R.id.bttnStopRefill);
+        yes.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+
+                m.GetManagerInstance().RefillMode(false);
+                dialog.dismiss();
+
+            }
+        });
+
+        refillStatus =(TextView) dialog.findViewById(R.id.txtRefill);
+        refillStatus.setText("Enter your refill bills...");
+
+        dialog.show();
+    }
+
+
+    private void ShowBuyDialog(ItlCurrency buy) {
+
+        Globals g = (Globals)getApplication();
+        final MyIOIOLooperManager m =  g.GetLooperManager();
+
+        m.GetManagerInstance().RefillMode(true);
+        final Dialog dialog = new Dialog(this,
+                android.R.style.Theme_Translucent_NoTitleBar);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_refill);
+        WindowManager.LayoutParams lp = new WindowManager.LayoutParams();
+        lp.copyFrom(dialog.getWindow().getAttributes());
+        lp.width = WindowManager.LayoutParams.MATCH_PARENT;
+        lp.height = WindowManager.LayoutParams.WRAP_CONTENT;
+        lp.gravity = Gravity.CENTER;
+
+        dialog.getWindow().setAttributes(lp);
+
+        Button yes = (Button) dialog.findViewById(R.id.bttnStopRefill);
+        yes.setText("Cancel");
+        yes.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+                m.GetManagerInstance().CancelBuy();
+                dialog.dismiss();
+                dialogBuy = null;
+            }
+        });
+
+        txtBuyStatus =(TextView) dialog.findViewById(R.id.txtRefill);
+        txtBuyStatus.setText("Enter payment: " + buy.country + " " + String.format("%.2f",(double)buy.value/100));
+
+        dialogBuy = dialog;
+
+        dialog.show();
+        m.GetManagerInstance().BuyItem(buy);
+    }
+
+
+
 
     @Override
     public void onRequestPermissionsResult(int requestCode,
