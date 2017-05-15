@@ -24,8 +24,8 @@ dependencies {
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
-    compile project(':sspcoms')
-    //compile files('libs/sspcoms.jar')
+//    compile project(':sspcoms')
+    compile files('libs/sspcoms.jar')
     compile files('libs/ioiolib.jar')
     compile files('libs/ioiolibaccessory.jar')
     compile files('libs/ioiolibbt.jar')
