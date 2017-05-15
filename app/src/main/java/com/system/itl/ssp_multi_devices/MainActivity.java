@@ -208,6 +208,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     public void DisplayNewSetup(DeviceSetup setup)
     {
+
+
+
         for (DeviceConnected con: setup.DevConnections
              ) {
             if(con.Connected){

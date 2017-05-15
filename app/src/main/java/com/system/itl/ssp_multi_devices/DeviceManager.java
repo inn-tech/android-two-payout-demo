@@ -206,10 +206,10 @@ class DeviceManager {
              ) {
             if(enable){
                 payMode = SystemPayMode.Refill;
-                s.SSPEnable();
+                s.SetRefillMode(true);
             }else{
                 payMode = SystemPayMode.Idle;
-                s.SSPDisable();
+                s.SetRefillMode(false);
             }
         }
     }
@@ -358,12 +358,33 @@ class DeviceManager {
     /* Notify events  */
     void NewSetupEvent(final SSPDevice sspDevice, final String tag) {
 
+
+
         MainActivity.mainActivity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 MainActivity.mainActivity.DisplayNewSetup(GetSetup());
             }
         });
+
+        // ensure disable is set correctly after restart
+        /*
+            for (ThreadSSPDevice dev : sspDevices
+                    ) {
+                if(payMode != SystemPayMode.Refill) {
+                    if (dev.GetSystemName().equals(tag)) {
+                        dev.SetRefillMode(false);
+                        dev.SSPDisable();
+                    }
+                }else{
+                    if (dev.GetSystemName().equals(tag)) {
+                        dev.SetRefillMode(true);
+                        dev.SSPEnable();
+                    }
+                }
+            } */
+
+
 
     }
 

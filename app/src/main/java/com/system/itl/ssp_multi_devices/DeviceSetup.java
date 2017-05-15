@@ -20,6 +20,7 @@ class DeviceSetup {
 
 
 
+
     DeviceSetup(){
         TotalStoredValue = new ArrayList<>();
         MinPayoutValue = new ArrayList<>();

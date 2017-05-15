@@ -130,6 +130,17 @@ class ThreadSSPDevice extends Thread implements  DeviceSetupListener, DeviceEven
     }
 
 
+    public void SetRefillMode(boolean mode)
+    {
+        ssp.SetRefillMode(mode);
+        if(mode) {
+            ssp.EnableDevice();
+        }else {
+            ssp.DisableDevice();
+        }
+    }
+
+
     String GetDeviceType()
     {
 
@@ -262,10 +273,14 @@ class ThreadSSPDevice extends Thread implements  DeviceSetupListener, DeviceEven
             SharedPreferences routes =
                     MainActivity.mainActivity.getSharedPreferences(ssp.GetSystemName()
                             + "_Routes", Context.MODE_PRIVATE);
+
+
             if(routes != null) { // settings exist
                 for (ItlCurrency cur : sspDevice.currency
                         ) {
                     String rt = routes.getString(cur.country + " " + String.valueOf(cur.value),"none");
+
+
                     // get this value and code
                     if (!rt.equals("none")){
                         // saved as PAYOUT
